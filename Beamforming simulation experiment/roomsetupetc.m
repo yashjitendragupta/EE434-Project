@@ -29,15 +29,15 @@ end
 person_1_loc = [3,2,1];
 person_2_loc = [7,3,1];
 person_3_loc = [3,5,1];
-% yaw, pitch,roll
+person_locs = [person_1_loc;person_2_loc;person_3_loc];
+% yaw, pitch,roll for voice directivity
 [p1y,p1p] = yaw_pitch(person_1_loc, array_loc);
 [p2y,p2p] = yaw_pitch(person_2_loc, array_loc);
 [p3y,p3p] = yaw_pitch(person_3_loc, array_loc);
 p1ypr = [p1y,p1p,0];
 p2ypr = [p2y,p2p,0];
 p3ypr = [p3y,p3p,0];
-% p1vec = [cos(p1y), sin(p1y), cos(p1p)];
-% p1vec = p1vec + person_1_loc;
+
 
 Sources = AddSource('Location',person_1_loc, 'orientation', p1ypr,'Type','cardioid');
 Sources = AddSource(Sources,'Location',person_2_loc, 'orientation', p2ypr,'Type','cardioid');
@@ -49,8 +49,31 @@ Sources = AddSource(Sources,'Location',person_3_loc, 'orientation', p3ypr,'Type'
 %% Simulation
 
 
-% [samples] = RunMCRoomSim(Sources,Receivers,Room,Options);
-% audiowrite('SampleIR.wav',RIR,44100)
+[samples] = RunMCRoomSim(Sources,Receivers,Room,Options);
+
+%% Saving data
+for i = 1:7
+    for j = 1:3
+        fname = ['IRs\speaker_' num2str(j) '_to_mic_' num2str(i) '.mat']
+        buffer = cell2mat(samples(i,j));
+        save(fname,'buffer');
+    end
+end
+save('IR_cells.mat','samples');
+for i = 1:7
+    fname = ['outputs\mic_' num2str(i) '_IR.txt']
+    file = fopen(fname,'wt');
+    IR(:,i) = cell2mat(samples(i,1)) + cell2mat(samples(i,2)) + cell2mat(samples(i,3));
+    fprintf(file,'%f\n',IR(:,i));
+end
+fclose('all');
+fname = 'outputs\theta.txt';
+file = fopen(fname,'wt');
+for i = 1:3
+    theta(i) = rad2deg(atan2((person_locs(i,2) - array_loc(2)),(person_locs(i,1) - array_loc(1))));
+end
+fprintf(file,'%f\n',theta);
+
 
 
 %% sounding
@@ -68,17 +91,23 @@ hold on
 plot3(person_2_loc(1),person_2_loc(2),person_2_loc(3),'o');
 plot3(person_3_loc(1),person_3_loc(2),person_3_loc(3),'o');
 plot3(mic_x,mic_y,mic_z, 'o');
+text(mic_x,mic_y,mic_z,{'1','2','3','4','5','6','7'})
 xlim([0 9]);
-ylim([0 6]);
+ylim([0 9]);
 zlim([0 3]);
 [x y] = meshgrid(0:0.1:9); % Generate x and y data
 z = zeros(size(x, 1)); % Generate z data
 plot3(x, y, z,'Color', 'black') % Plot the surface
 
+xlabel('x');
+ylabel('y');
+zlabel('z');
+
 
 %% Functions
 
 % Generates arrays for the x, y, and z locations of mics in array
+% 3 cm apart
 function [x,y,z] = Arraygen(origin)
     x = origin(1);
     y = origin(2);
@@ -90,6 +119,7 @@ function [x,y,z] = Arraygen(origin)
     end
 end
 
+% Gives yaw and pitch from one point to another
 function [yaw,pitch] = yaw_pitch(speaker,mic_array)
     dx = speaker(1) - mic_array(1);
     dy = speaker(2) - mic_array(2);
