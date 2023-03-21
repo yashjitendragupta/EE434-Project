@@ -8,18 +8,20 @@ N = length(cell2mat(samples(1,1)));
 [voice_1, Fs] = audioread('Input_voices\voice_1.wav');
 [voice_2, Fs] = audioread('Input_voices\voice_2.wav');
 [voice_3, Fs] = audioread('Input_voices\voice_3.wav');
-voices = [voice_1,voice_2,voice_3];
+Nvoice = length(voice_1(:,1));
+voices = [voice_1(:,1),voice_2(:,1),voice_3(:,1)];
+% voices(:,2) = zeros(Nvoice,1);
+% voices(:,3) = zeros(Nvoice,1);
 microphone = zeros(length(voice_1) + N,7);
 
 %% convolutions
+
+
 for i = 1:7
     for j = 1:3
         convolved{i,j} = ifft( ...
-            fft([cell2mat(samples(i,j)); ...
-                 zeros(length(voices(:,1)),1)]) ...
-                 .* ...
-                 fft([voices(:,j); ...
-                 zeros(N,1)])); 
+            fft([cell2mat(samples(i,j)); zeros(length(voices(:,1)),1)]) ...
+                 .* fft([voices(:,j); zeros(N,1)])); 
     end
 end
 
@@ -38,4 +40,4 @@ for i = 1:7
 end
 
 
-% soundsc(microphone(:,1),Fs)
+soundsc(microphone(:,3),Fs)

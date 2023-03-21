@@ -1,6 +1,19 @@
 close all
 clear all
 addpath('MCRoomSim')
+%                       X
+%             X1        ^
+%        _______________|
+%       |               |           * Z axis increases upwards from origin
+%       |               |           * Z0 (floor)   
+%       |               |           * Z1 (ceiling)
+%    Y1 |               | Y0
+%       |               | 
+%       |               |
+%       |               |
+%    Y<-----------------0
+%             X0
+%
 
 %% Room setup
 Absorption_freqs = 	[125, 250, 500, 1000, 2000, 4000];
@@ -52,20 +65,20 @@ Sources = AddSource(Sources,'Location',person_3_loc, 'orientation', p3ypr,'Type'
 [samples] = RunMCRoomSim(Sources,Receivers,Room,Options);
 
 %% Saving data
-for i = 1:7
-    for j = 1:3
-        fname = ['IRs\speaker_' num2str(j) '_to_mic_' num2str(i) '.mat']
-        buffer = cell2mat(samples(i,j));
-        save(fname,'buffer');
-    end
-end
+% for i = 1:7
+%     for j = 1:3
+%         fname = ['IRs\speaker_' num2str(j) '_to_mic_' num2str(i) '.mat']
+%         buffer = cell2mat(samples(i,j));
+%         save(fname,'buffer');
+%     end
+% end
 save('IR_cells.mat','samples');
-for i = 1:7
-    fname = ['outputs\mic_' num2str(i) '_IR.txt']
-    file = fopen(fname,'wt');
-    IR(:,i) = cell2mat(samples(i,1)) + cell2mat(samples(i,2)) + cell2mat(samples(i,3));
-    fprintf(file,'%f\n',IR(:,i));
-end
+% for i = 1:7
+%     fname = ['outputs\mic_' num2str(i) '_IR.txt']
+%     file = fopen(fname,'wt');
+%     IR(:,i) = cell2mat(samples(i,1)) + cell2mat(samples(i,2)) + cell2mat(samples(i,3));
+%     fprintf(file,'%f\n',IR(:,i));
+% end
 fclose('all');
 fname = 'outputs\theta.txt';
 file = fopen(fname,'wt');
@@ -124,8 +137,8 @@ function [yaw,pitch] = yaw_pitch(speaker,mic_array)
     dx = speaker(1) - mic_array(1);
     dy = speaker(2) - mic_array(2);
     dz = speaker(3) - mic_array(3);
-    yaw = atan(dy/dx);
-    pitch = atan(sqrt(dy^2 + dx^2)/dz) + pi;
+    yaw = atan2(dy,dx);
+    pitch = 0;
 
 
 
