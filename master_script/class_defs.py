@@ -1,6 +1,12 @@
 import numpy as np
 
-class separated:
-    def __init__(self):
-        self.str = "geeksforgeeks"
-        self.x = 20
+class virtualizer:
+    def __init__(self,direction):
+        self.buffer = np.zeros(1024)
+        self.direction = direction
+
+
+    def virtualize(new_buffer):
+        
+        return new_buffer
+
