@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.io import wavfile as wav
-from scipy.io import fft
+from scipy.fft import fft
 
 class virtualizer:
     def __init__(self,direction):
@@ -9,37 +9,37 @@ class virtualizer:
         # take 60% azimuth for if it's the left or right
         # 0% for middle
         if(direction == 'l' or direction == 'r'):
-            hrtf_file = "../hrtf/elev0/H0e060a.wav"
+            hrtf_file = "../HRTF/elev0/H0e060a.wav"
         else:
-            hrtf_file = "../hrtf/elev0/H0e000a.wav"
+            hrtf_file = "../HRTF/elev0/H0e000a.wav"
 
         hrtf_samplerate, hrtf = wav.read(hrtf_file)
 
         # flip left and right channels of hrtf for left side
         if(direction == 'l'):
-            dummy = hrtf[0]
-            hrtf[0] = hrtf[1]
-            hrtf[1] = dummy
+            dummy = hrtf[:, 0]
+            hrtf[:, 0] = hrtf[:, 1]
+            hrtf[:, 1] = dummy
 
-        N_hrtf = len(hrtf[0])
+        N_hrtf = len(hrtf[:, 0])
 
         # zero pad HRTF to two times the buffer
 
-        hrtf[0] = np.concatenate([hrtf[0], np.zeros(2048-N_hrtf)])
-        hrtf[1] = np.concatenate([hrtf[1], np.zeros(2048-N_hrtf)])
+        hrtf_0 = np.concatenate([hrtf[:, 0], np.zeros(2048-N_hrtf)])
+        hrtf_1 = np.concatenate([hrtf[:, 1], np.zeros(2048-N_hrtf)])
 
         # store the FFT of the HRTFs because we don't actually need the sample domain 
-
-        self.HRTF[0] = np.fft.fft(hrtf[0])
-        self.HRTF[1] = np.fft.fft(hrtf[1])
-
-
+        self.HRTF = [None, None]
+        self.HRTF[0] = np.fft.fft(hrtf_0)
+        self.HRTF[1] = np.fft.fft(hrtf_1)
 
 
 
 
 
-    def virtualize(new_buffer):
+
+
+    def virtualize(self, new_buffer):
         
         # concatenate old buffer and new buffer
         self.buffer = np.concatenate([self.buffer, new_buffer])
