@@ -17,8 +17,9 @@ target_dir = np.array([1, 0])
 
 def W(k, target_k):
     weights = (1/len(X))*np.exp(1j*X@target_k)
-    # window_factor = 0.30 # based on the geometry, this is what all kinds of windows reduce to---a single factor
-    # weights = np.array([window_factor]+[(1-window_factor)/6]*6)*np.exp(1j*(1/c)*X@target_k)
+    # window_factor = 1/6 # based on the geometry, all axially-symmetric windows reduce to a single factor (1/6 is rectangular)
+    # weights[0] *= len(X)*window_factor # assuming that the first microphone is the center microphone...
+    # weights[1:] *= len(X)*(1-window_factor)/6  #  cancel out the previous factor of (1/len(X)) then set new factors
     return weights.dot(np.exp(-1j*X@k))
 
 incoming_w_over_freq = []
