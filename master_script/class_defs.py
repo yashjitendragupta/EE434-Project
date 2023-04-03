@@ -17,7 +17,7 @@ class virtualizer:
 
         # flip left and right channels of hrtf for left side
         if(direction == 'l'):
-            dummy = hrtf[:, 0]
+            dummy = hrtf[:, 0].copy()
             hrtf[:, 0] = hrtf[:, 1]
             hrtf[:, 1] = dummy
 
