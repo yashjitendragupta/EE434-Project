@@ -98,10 +98,12 @@ dependencies:
   - platformdirs=2.5.2=py311h06a4308_0
   - ply=3.11=py311h06a4308_0
   - pooch=1.4.0=pyhd3eb1b0_0
+  - portaudio=19.6.0=h7b6447c_4
   - prompt-toolkit=3.0.36=py311h06a4308_0
   - psutil=5.9.0=py311h5eee18b_0
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
+  - pyaudio=0.2.11=py311h5eee18b_2
   - pycparser=2.21=pyhd3eb1b0_0
   - pygments=2.11.2=pyhd3eb1b0_0
   - pyopenssl=23.0.0=py311h06a4308_0
