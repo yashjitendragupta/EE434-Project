@@ -15,6 +15,8 @@ class virtualizer:
 
         hrtf_samplerate, hrtf = wav.read(hrtf_file)
 
+        hrtf = np.array(hrtf, dtype=np.float32)/32768
+
         # flip left and right channels of hrtf for left side
         if(direction == 'l'):
             dummy = hrtf[:, 0].copy()
