@@ -35,6 +35,9 @@ class virtualizer:
         self.HRTF[0] = np.fft.fft(hrtf_0)
         self.HRTF[1] = np.fft.fft(hrtf_1)
 
+        # for compressor history
+        self.history = np.zeros(4)
+
 
 
 
@@ -66,4 +69,13 @@ class virtualizer:
         self.buffer = self.buffer[16384:]
         
         return (left_channel, right_channel)
+
+    def compressor(self, new_buffer):
+
+        rms = np.sqrt(np.mean(new_buffer**2))
+        DBFS = 20*log10(rms) + 3.0103
+        print('dBFS of buffer:',power)
+        return (new_buffer * 10**(-1*DBFS/20))
+
+
 
