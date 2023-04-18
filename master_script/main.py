@@ -19,7 +19,7 @@ MIC_POSITIONS = np.array([ # estimated positions of the microphones
 
 class beamformer:
     def __init__(self, angle): # angle is in degrees
-        self.buffer = np.zeros((16384, 7))
+        self.buffer = np.zeros((4096, 7))
 
         target_dir = np.array([np.cos(np.deg2rad(angle)), np.sin(np.deg2rad(angle))])
         delay = (FS/C)*MIC_POSITIONS@target_dir+8
@@ -30,7 +30,7 @@ class beamformer:
 
         for i, delay in enumerate(self.delay):
             working_buffer[:, i] = np.roll(working_buffer[:, i], delay)
-        output_buffer = np.average(working_buffer[16384:], axis=1)
+        output_buffer = np.average(working_buffer[4096:], axis=1)
 
         self.buffer = new_buffer
         return output_buffer
@@ -41,7 +41,7 @@ class sequential_block:
     def add_route(self, angle, pos):
         self.routes.append((beamformer(angle), virtualizer(pos)))
     def routine(self, raw_samples):
-        output = np.zeros((16384, 2), dtype=np.float32)
+        output = np.zeros((4096, 2), dtype=np.float32)
         for bf, virt in self.routes:
             bf_output = bf.beamform(raw_samples[:, :7])
             # other processing can go here

@@ -11,7 +11,7 @@ AUDIO_INTERFACE = pyaudio.PyAudio() # https://people.csail.mit.edu/hubert/pyaudi
 class dsp_pipeline:
     def __init__(
             self, 
-            routine, # expected signature is func(samples_in) -> samples_out where samples are length-16384
+            routine, # expected signature is func(samples_in) -> samples_out where samples are length-4096
             target_input_device='micArray RAW SPK: USB Audio \(hw:[0-9]+,0\)',  # device identified using regex
             target_output_device='Loopback: PCM \(hw:[0-9]+,1\)', # listen at 'Loopback: PCM (hw:[NUMBER],0)'
             ):
@@ -43,7 +43,7 @@ class dsp_pipeline:
             format=pyaudio.paFloat32,
             input=True,
             input_device_index=i_input,
-            frames_per_buffer=16384,
+            frames_per_buffer=4096,
             start=False,
             stream_callback=self._in_callback,
         )
@@ -53,7 +53,7 @@ class dsp_pipeline:
             format=pyaudio.paFloat32,
             output=True,
             output_device_index=i_output,
-            frames_per_buffer=16384,
+            frames_per_buffer=4096,
             start=False,
             stream_callback=self._out_callback,
 
@@ -69,7 +69,7 @@ class dsp_pipeline:
         self.output_stream.start_stream()
     def process(self):
         samples_bytes_in = self.in_queue.get()
-        samples_np_in = np.frombuffer(samples_bytes_in, dtype=np.float32).reshape((16384, 8))
+        samples_np_in = np.frombuffer(samples_bytes_in, dtype=np.float32).reshape((4096, 8))
         samples_np_out = self.routine(samples_np_in).astype(np.float32) # make sure the type is what pyaudio expects
         samples_bytes_out = samples_np_out.tobytes()
         self.out_queue.put(samples_bytes_out)
@@ -80,7 +80,7 @@ class dsp_pipeline:
 
 if __name__ == '__main__':
     def passthrough_routine(samples_in):
-        samples_out = np.zeros((16384, 2), dtype=np.float32)
+        samples_out = np.zeros((4096, 2), dtype=np.float32)
         samples_out[:, 0] = samples_in[:, 0]
         samples_out[:, 1] = samples_in[:, 1]
         return samples_out

@@ -4,7 +4,7 @@ from scipy.fft import fft
 
 class virtualizer:
     def __init__(self,direction):
-        self.buffer = np.zeros(16384)
+        self.buffer = np.zeros(4096)
 
         # take 60% azimuth for if it's the left or right
         # 0% for middle
@@ -27,8 +27,8 @@ class virtualizer:
 
         # zero pad HRTF to two times the buffer
 
-        hrtf_0 = np.concatenate([hrtf[:, 0], np.zeros(2*16384-N_hrtf)])
-        hrtf_1 = np.concatenate([hrtf[:, 1], np.zeros(2*16384-N_hrtf)])
+        hrtf_0 = np.concatenate([hrtf[:, 0], np.zeros(2*4096-N_hrtf)])
+        hrtf_1 = np.concatenate([hrtf[:, 1], np.zeros(2*4096-N_hrtf)])
 
         # store the FFT of the HRTFs because we don't actually need the sample domain 
         self.HRTF = [None, None]
@@ -62,11 +62,11 @@ class virtualizer:
         right_channel = np.fft.ifft(right_channel_fft)
 
         # take last half corresponding to new buffer
-        left_channel = left_channel[16384:]
-        right_channel = right_channel[16384:]
+        left_channel = left_channel[4096:]
+        right_channel = right_channel[4096:]
 
         # store new buffer for next time
-        self.buffer = self.buffer[16384:]
+        self.buffer = self.buffer[4096:]
         
         return (left_channel, right_channel)
 
