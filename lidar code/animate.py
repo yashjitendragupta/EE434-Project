@@ -5,33 +5,38 @@ from matplotlib import pyplot as plt
 
 raw_data = np.load('walking.npy', allow_pickle=True)
 
-class interpolator:
-    def __init__(self, memory_size=2048):
+# using Gaussian RBF interpolation for now
+# epsilon is RBF width, letting rcond -> 0 is more accurate  but less stable
+class gaussian_rbf_interpolator: 
+    def __init__(self, memory_size, epsilon=3.0, rcond=1e-3):
         self.memory_size = memory_size
-        self.last_samples = np.empty((memory_size, 2), dtype=np.float32) # TODO: start this gracefully
-        self.last_samples[:] = np.nan
-    def insert(self, sample):
-        self.last_samples = np.roll(self.last_samples, 1, axis=0)
-        self.last_samples[0] = sample
+        self.memory = np.full((memory_size, 2), fill_value=np.nan, dtype=np.float32)
+        self.epsilon = epsilon
+        self.rcond = rcond
+    
     def insert_many(self, samples):
-        length = len(samples)
-        self.last_samples = np.roll(self.last_samples, length, axis=0)
-        self.last_samples[:length] = samples
+        n_samples = len(samples)
+        self.memory[n_samples:] = self.memory[:-n_samples]
+        self.memory[:n_samples] = samples
+    
     def generate_interpolation(self):
-        epsilon = 0.25 # parameter for Gaussian RBF
-        interpolation = np.zeros(360)
-        for i in range(self.memory_size):
-            if np.isnan(self.last_samples[i, 0]):
-                continue
-            angle = self.last_samples[i, 0]
-            distance = self.last_samples[i, 1]
+        n_valid = np.count_nonzero(~np.isnan(self.memory[:, 0]))
 
-            input_angle = np.arange(360)-angle
-            input_angle[input_angle > 180] -= 360
-            input_angle[input_angle < -180] += 360
+        observed_angles = self.memory[:n_valid, 0]*np.pi/180
+        rbfs = np.empty((n_valid, n_valid))
+        for i, observed_angle in enumerate(observed_angles):
+            rbfs[:, i] = np.exp(-(self.epsilon*(observed_angles-observed_angle))**2)
+        
+        rbs_pseudoinverse = np.linalg.pinv(rbfs, rcond=self.rcond)
+        observed_distances = self.memory[:n_valid, 1]
+        weights = rbs_pseudoinverse @ observed_distances
 
-            rbf = epsilon*np.exp(-(epsilon*(np.arange(360)-angle))**2)/12
-            interpolation += rbf*distance
+        grid_angles = np.linspace(0, 2*np.pi, 360, endpoint=False)
+        interpolation = np.zeros_like(grid_angles, dtype=np.float32)
+        for observed_angle, weight in zip(observed_angles, weights):
+            rbf = np.exp(-(self.epsilon*(grid_angles-observed_angle))**2)
+            interpolation += weight*rbf
+        
         return interpolation
 
 class velocity_estimator:
@@ -56,9 +61,14 @@ average_interval = np.mean(np.diff(times))
 
 print(f'Loaded {len(times)} frames with an average interval of {average_interval}')
 
-interp = interpolator()
+interp = gaussian_rbf_interpolator(512, 3.0)
 vel_est = velocity_estimator()
+
 interp.insert_many(samples[0])
+plt.plot(range(360), interp.generate_interpolation())
+plt.scatter(samples[0][:, 0], samples[0][:, 1])
+plt.title('Initial interpolation vs actual samples')
+plt.show()
 
 initial_interpolation = interp.generate_interpolation()
 vel_est.estimate(initial_interpolation, average_interval)
