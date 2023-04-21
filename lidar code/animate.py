@@ -39,20 +39,40 @@ class gaussian_rbf_interpolator:
         
         return interpolation
 
-class velocity_estimator:
-    def __init__(self):
-        self.h_prev = np.empty_like(360)
+# though velocity estimation by using optical flow is actually fully defined in 
+#  1d, we can apply the Lucas-Kanade method anyway to get a less noisy estimated 
+#  velocity by using the assumption of constant angular velocity within a 
+#  neighborhood/window? It's just the first thing that looked okay
+# to see the difference, try a window size of 0 because this reverts the Lucas- 
+#  Kanade method back to the solution of the fully defined 1D problem
+class angular_velocity_estimator:
+    def __init__(self, window_size):
+        self.h_prev = np.zeros(360)
+        self.window_size = window_size
+    
     def estimate(self, h, dt):
-        dh_dt = (h-self.h_prev)/dt
+        h_meters = h/1000 # convert to meters
+        dtheta = 2*np.pi/360
         
-        dx = 1/(2*np.pi)
-        dh_dx = np.empty_like(h)
-        dh_dx = (2*h+np.roll(h, -1)-np.roll(h, 1))/(2*dx)
+        dh_dt = (h_meters-self.h_prev)/dt
+        dh_dtheta = (np.roll(h_meters, -1)-np.roll(h_meters, 1))/(2*dtheta)
 
-        v = -dh_dt/dh_dx
-        self.h_prev = h
+        v_est = np.empty(360, dtype=np.float32)
+        for i in range(360):
+            window = np.arange(i-self.window_size, i+self.window_size+1)
+            window[window < 0] += 360
+            window[window >= 360] -= 360
 
-        return v
+            dh_dtheta_local = dh_dtheta[window]
+            dh_dt_local = dh_dt[window]
+
+            # in 1D, the pseudoinverse reduces to a row vector
+            pseudoinverse = dh_dtheta_local.T/np.sum(dh_dtheta_local**2)
+
+            v_est[i] = -pseudoinverse @ dh_dt_local
+        
+        self.h_prev = h_meters
+        return v_est
 
 times = raw_data[:, 1]
 samples = raw_data[:, 0]
@@ -62,7 +82,7 @@ average_interval = np.mean(np.diff(times))
 print(f'Loaded {len(times)} frames with an average interval of {average_interval}')
 
 interp = gaussian_rbf_interpolator(512, 3.0)
-vel_est = velocity_estimator()
+vel_est = angular_velocity_estimator(window_size=12)
 
 interp.insert_many(samples[0])
 plt.plot(range(360), interp.generate_interpolation())
@@ -76,15 +96,16 @@ initial_vel = vel_est.estimate(initial_interpolation, average_interval)
 
 fig = plt.figure()
 ax = fig.add_subplot(projection='polar')
-line, = ax.plot(np.arange(360)/180*np.pi, 10000*np.abs(initial_vel), 'ro')
+line, = ax.plot(np.arange(360)/180*np.pi, 4000*np.abs(initial_vel), 'ro') # 4000 is just for visualization
 line2, = ax.plot(samples[0][:, 0]/180*np.pi, samples[0][:, 1], 'bo')
 line3, = ax.plot(np.arange(360)/180*np.pi, initial_interpolation, 'go')
 
 def animate(i):
     interp.insert_many(samples[i])
     interpolation = interp.generate_interpolation()
+    velocity_estimation = vel_est.estimate(interpolation, average_interval)
 
-    line.set_data(np.arange(360)/180*np.pi, 10000*np.abs(vel_est.estimate(interpolation, average_interval)))
+    line.set_data(np.arange(360)/180*np.pi, 4000*np.abs(velocity_estimation))
     line2.set_data(samples[i][:, 0]/180*np.pi, samples[i][:, 1])
     line3.set_data(np.arange(360)/180*np.pi, interpolation)
     return [line, line2, line3]
