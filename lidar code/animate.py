@@ -3,6 +3,11 @@ import numpy as np
 from matplotlib import animation
 from matplotlib import pyplot as plt
 
+MEMORY_SIZE = 512
+RBF_EPSILON = 4.5
+RBF_RCOND = 1e-3
+LUCAS_KANADE_WINDOW_SIZE = 24
+
 raw_data = np.load('walking.npy', allow_pickle=True)
 
 # using Gaussian RBF interpolation for now
@@ -81,8 +86,8 @@ average_interval = np.mean(np.diff(times))
 
 print(f'Loaded {len(times)} frames with an average interval of {average_interval}')
 
-interp = gaussian_rbf_interpolator(512, 3.0)
-vel_est = angular_velocity_estimator(window_size=12)
+interp = gaussian_rbf_interpolator(MEMORY_SIZE, epsilon=RBF_EPSILON, rcond=RBF_RCOND)
+vel_est = angular_velocity_estimator(window_size=LUCAS_KANADE_WINDOW_SIZE)
 
 interp.insert_many(samples[0])
 plt.plot(range(360), interp.generate_interpolation())
