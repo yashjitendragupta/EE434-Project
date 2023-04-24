@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import animation
 from matplotlib import pyplot as plt
 
-MEMORY_SIZE = 512 # number of samples used for RBF interpolation, increasing trades off speed for accuracy
+MEMORY_SIZE = 1024 # number of samples used for RBF interpolation, increasing trades off speed for accuracy
 RBF_EPSILON = 4.5 # Gaussian RBF width
 RBF_RCOND = 1e-3  # Letting rcond -> 0 is more accurate but less stable
 LUCAS_KANADE_WINDOW_SIZE = 24 # window size for the Lucas-Kanade method, 0 reverts to the fully defined 1D solution
@@ -23,21 +23,21 @@ class gaussian_rbf_interpolator:
         self.memory[:n_samples] = samples
     
     def generate_interpolation(self):
+        grid_angles = np.linspace(0, 2*np.pi, 360, endpoint=False)
         n_valid = np.count_nonzero(~np.isnan(self.memory[:, 0]))
 
         observed_angles = self.memory[:n_valid, 0]*np.pi/180
-        rbfs = np.empty((n_valid, n_valid))
-        for i, observed_angle in enumerate(observed_angles):
-            rbfs[:, i] = np.exp(-(self.epsilon*(observed_angles-observed_angle))**2)
+        rbfs = np.empty((n_valid, 360))
+        for i, grid_angle in enumerate(grid_angles):
+            rbfs[:, i] = np.exp(-(self.epsilon*(observed_angles-grid_angle))**2)
         
         rbs_pseudoinverse = np.linalg.pinv(rbfs, rcond=self.rcond)
         observed_distances = self.memory[:n_valid, 1]
         weights = rbs_pseudoinverse @ observed_distances
 
-        grid_angles = np.linspace(0, 2*np.pi, 360, endpoint=False)
         interpolation = np.zeros_like(grid_angles, dtype=np.float32)
-        for observed_angle, weight in zip(observed_angles, weights):
-            rbf = np.exp(-(self.epsilon*(grid_angles-observed_angle))**2)
+        for grid_angle_0, weight in zip(grid_angles, weights):
+            rbf = np.exp(-(self.epsilon*(grid_angles-grid_angle_0))**2)
             interpolation += weight*rbf
         
         return interpolation
