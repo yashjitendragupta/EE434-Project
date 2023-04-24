@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 MEMORY_SIZE = 1024 # number of samples used for RBF interpolation, increasing trades off speed for accuracy
 RBF_EPSILON = 4.5 # Gaussian RBF width
 RBF_RCOND = 1e-3  # Letting rcond -> 0 is more accurate but less stable
-LUCAS_KANADE_WINDOW_SIZE = 24 # window size for the Lucas-Kanade method, 0 reverts to the fully defined 1D solution
+LUCAS_KANADE_WINDOW_SIZE = 12 # window size for the Lucas-Kanade method, 0 reverts to the fully defined 1D solution
 
 # using Gaussian RBF interpolation for now (TODO: try the linear interpolation code?)
 # epsilon is RBF width, letting rcond -> 0 is more accurate  but less stable
@@ -50,17 +50,22 @@ class gaussian_rbf_interpolator:
 #  Kanade method back to the solution of the fully defined 1D problem
 class angular_velocity_estimator:
     def __init__(self, window_size):
+        self.h_raw_prev = np.zeros(360)
         self.h_prev = np.zeros(360)
         self.window_size = window_size
     
     def fill_previous(self, h):
         h_meters = h/1000 # convert to meters
+        self.h_raw_prev = h_meters
         self.h_prev = h_meters
 
-    def estimate(self, h, dt):
-        h_meters = h/1000 # convert to meters
-        dtheta = 2*np.pi/360
+    def estimate(self, h_raw, dt):
+        # convert to meters and filter
+        h_meters = h_raw/1000
+        h_meters = 0.5*h_meters+0.5*self.h_raw_prev
+        self.h_raw_prev = h_meters
         
+        dtheta = 2*np.pi/360
         dh_dt = (h_meters-self.h_prev)/dt
         dh_dtheta = (np.roll(h_meters, -1)-np.roll(h_meters, 1))/(2*dtheta)
 
@@ -93,8 +98,8 @@ print(f'Loaded {len(times)} frames with an average interval of {average_interval
 interp = gaussian_rbf_interpolator(MEMORY_SIZE, epsilon=RBF_EPSILON, rcond=RBF_RCOND)
 vel_est = angular_velocity_estimator(window_size=LUCAS_KANADE_WINDOW_SIZE)
 
-# fill the interpolator and velocity estimator with the first two frames
-first_samples = np.concatenate([samples[0], samples[1]], axis=0)
+# fill the interpolator and velocity estimator with the first three frames
+first_samples = np.concatenate([samples[0], samples[1], samples[2]], axis=0)
 interp.insert_many(first_samples)
 initial_interpolation = interp.generate_interpolation()
 vel_est.fill_previous(initial_interpolation)
@@ -118,6 +123,7 @@ def animate(i):
     interpolation = interp.generate_interpolation()
     vel_estimate = vel_est.estimate(interpolation, average_interval)
 
+    ax.set_ylim([0, 8000])
     line.set_data(np.arange(360)/180*np.pi, 4000*np.abs(vel_estimate))
     line2.set_data(np.arange(360)/180*np.pi, interpolation)
     line3.set_data(samples[i][:, 0]/180*np.pi, samples[i][:, 1])
