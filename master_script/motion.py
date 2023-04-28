@@ -1,3 +1,14 @@
+# motion.py
+# given the raw samples taken from the RPLiDAR...
+#  [1] pass those samples into the interpolator's memory using insert_many()
+#  [2] get the interpolator's output using generate()
+#  [3] pre-filter the interpolator's output by passing it through filter()
+#  [4] get velocity estimates by passing the filter's output into estimate()
+#  [5] get motion labels by passing the velocity estimates into detect_motion()
+#  [6] get avg angle of each label by passing the labels into find_motion()
+# where i-th element corresponds to the average position of the i-th detected 
+# motion, counting counter-clockwise from the 0-degree position
+
 import numpy as np
 from scipy.interpolate import make_smoothing_spline
 from scipy.signal import butter
