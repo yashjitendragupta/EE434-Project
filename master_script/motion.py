@@ -113,6 +113,37 @@ class angular_velocity_estimator:
         return v_est
 
 
+def detect_motion(v, upper_threshold=0.15, lower_threshold=0.025): # upper-lower thresholds to configure hysteresis
+    motion_counter = 0
+    motion_detected = False
+    labels = np.empty_like(v, dtype=np.int32)
+    for i, v_theta in enumerate(v):
+        if np.abs(v_theta) > upper_threshold:
+            motion_detected = True
+        elif motion_detected and np.abs(v_theta) < lower_threshold:
+            motion_detected = False
+            motion_counter += 1
+        else:
+            pass
+        
+        if motion_detected:
+            labels[i] = motion_counter
+        else:
+            labels[i] = -1
+    
+    return labels
+
+def find_motion(labels):
+    n_labels = np.max(labels)+1 # +1 because labels start at 0
+    indicator = np.zeros_like(labels)
+    for i_label in range(n_labels):
+        label_indices = np.argwhere(labels == i_label)
+        mean_index = np.mean(label_indices)
+        mean_index = int(mean_index)
+        indicator[mean_index] = i_label+1 # +1 because labels start at 0
+    return indicator
+
+
 if __name__ == '__main__':
     raw_data = np.load(WALKING_NPY_PATH, allow_pickle=True)
     times = raw_data[:, 1]      # list of times corresponding to ...
@@ -139,7 +170,9 @@ if __name__ == '__main__':
             angle_grid, heights = interp.generate()
             filtered_heights = filt.filter(heights)
             velocities = vel_est.estimate(filtered_heights, 1/7)
-            yield heights, filtered_heights, 10*np.abs(velocities)
+            labels = detect_motion(velocities)
+            indicator = find_motion(labels)
+            yield heights, filtered_heights, 10*np.abs(velocities), indicator
 
     samples = list(output_next_samples())
     
@@ -150,6 +183,7 @@ if __name__ == '__main__':
     artists.append(ax.plot([], [], label=f'interpolated_heights', marker='o', linestyle='')[0])
     artists.append(ax.plot([], [], label=f'filtered_heights', marker='o', linestyle='')[0])
     artists.append(ax.plot([], [], label=f'10*np.abs(velocities)', marker='o', linestyle='')[0])
+    artists.append(ax.plot([], [], label=f'indicator', marker='o', linestyle='')[0])
 
     ax.set_ylim(0, 7)
     ax.set_xlim(0, 2*np.pi)
