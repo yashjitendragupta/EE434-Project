@@ -10,7 +10,7 @@
 # motion, counting counter-clockwise from the 0-degree position
 
 import numpy as np
-from scipy.interpolate import make_smoothing_spline
+from scipy.interpolate import Rbf
 from scipy.signal import butter
 
 from matplotlib import animation
@@ -62,7 +62,7 @@ class interpolator:
             grid = np.linspace(0, 2*np.pi, 360, endpoint=False)
         else:
             grid = np.arange(0, 360, 1)
-        spline_func = make_smoothing_spline(angles, heights)
+        spline_func = Rbf(angles, heights, smooth=10)
         return grid, spline_func(grid)
 
 
@@ -118,13 +118,13 @@ class angular_velocity_estimator:
             # in 1D, the pseudoinverse reduces to a row vector
             pseudoinverse = dh_dtheta_local.T/np.sum(dh_dtheta_local**2)
 
-            v_est[i] = -pseudoinverse @ dh_dt_local
+            v_est[i] = -np.matmul(pseudoinverse, dh_dt_local)
         
         self.h_prev = h
         return v_est
 
 
-def detect_motion(v, upper_threshold=0.15, lower_threshold=0.025): # upper-lower thresholds to configure hysteresis
+def detect_motion(v, upper_threshold=0.20, lower_threshold=0.025): # upper-lower thresholds to configure hysteresis
     motion_counter = 0
     motion_detected = False
     labels = np.empty_like(v, dtype=np.int32)
@@ -188,13 +188,13 @@ if __name__ == '__main__':
     samples = list(output_next_samples())
     
     fig = plt.figure()
-    ax = fig.add_subplot(projection='polar')
+    ax = fig.add_subplot(111, projection='polar')
 
     artists = []
-    artists.append(ax.plot([], [], label=f'interpolated_heights', marker='o', linestyle='')[0])
-    artists.append(ax.plot([], [], label=f'filtered_heights', marker='o', linestyle='')[0])
-    artists.append(ax.plot([], [], label=f'10*np.abs(velocities)', marker='o', linestyle='')[0])
-    artists.append(ax.plot([], [], label=f'indicator', marker='o', linestyle='')[0])
+    artists.append(ax.plot([], [], label='interpolated_heights', marker='o', linestyle='')[0])
+    artists.append(ax.plot([], [], label='filtered_heights', marker='o', linestyle='')[0])
+    artists.append(ax.plot([], [], label='10*np.abs(velocities)', marker='o', linestyle='')[0])
+    artists.append(ax.plot([], [], label='indicator', marker='o', linestyle='')[0])
 
     ax.set_ylim(0, 7)
     ax.set_xlim(0, 2*np.pi)
