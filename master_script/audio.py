@@ -34,8 +34,8 @@ class dsp_pipeline:
             raise IOError(f'{target_output_device} not found, have you run "sudo modprobe snd-aloop"?')
         
         # input_stream  --[in_queue]-->  routine  --[out_queue]-->  output_stream
-        self.in_queue = queue.SimpleQueue()
-        self.out_queue = queue.SimpleQueue()
+        self.in_queue = queue.Queue()
+        self.out_queue = queue.Queue()
         self.routine = routine
         self.input_stream = self.audio_interface.open(
             rate=44100,
