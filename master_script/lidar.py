@@ -113,7 +113,7 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 					locations[i] = 0
 				if(locations[i+1] == 1)
 					locations[i] = 0
-		print(locations)
+		print(locations, end = '\r')
     		
 		# Write theta values to text file, this is defo not the right way but whatevs we'll fix it l8r
 		# thetas_txt.truncate(0)
