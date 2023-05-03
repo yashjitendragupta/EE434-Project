@@ -10,7 +10,7 @@
 # motion, counting counter-clockwise from the 0-degree position
 
 import numpy as np
-from scipy.interpolate import Rbf
+import torch
 from scipy.signal import butter
 
 from matplotlib import animation
@@ -19,11 +19,14 @@ from matplotlib import pyplot as plt
 WALKING_NPY_PATH = '../lidar code/walking.npy'
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 class interpolator:
     def __init__(self, memory_size=512, meters=True, radians=True):
         self.memory_size = memory_size
-        self.angles_memory = np.full(memory_size, fill_value=np.nan, dtype=np.float32)
-        self.heights_memory = np.full(memory_size, fill_value=np.nan, dtype=np.float32)
+        self.angles_memory = torch.full((memory_size, ), fill_value=np.nan, device=device)
+        self.heights_memory = torch.full((memory_size, ), fill_value=np.nan, device=device)
 
         self.meters = meters
         self.radians = radians
@@ -31,39 +34,48 @@ class interpolator:
     def insert_many(self, angles, heights):
         n_samples = len(angles)
 
+        # copy the data to the GPU then do some transforms there
+        angles_gpu = torch.from_numpy(angles).float().to(device)
+        heights_gpu = torch.from_numpy(heights).float().to(device)
         if self.radians:
-            angles = angles.copy()*np.pi/180
+            angles_gpu = angles_gpu*np.pi/180
         if self.meters:
-            heights = heights.copy()/1000
+            heights_gpu = heights_gpu/1000
 
         if n_samples > self.memory_size:
-            self.angles_memory = angles[-self.memory_size:]
-            self.heights_memory = heights[-self.memory_size:]
+            self.angles_memory = angles_gpu[-self.memory_size:]
+            self.heights_memory = heights_gpu[-self.memory_size:]
         else:
-            self.angles_memory = np.roll(self.angles_memory, n_samples)
-            self.angles_memory[:n_samples] = angles
-            self.heights_memory = np.roll(self.heights_memory, n_samples)
-            self.heights_memory[:n_samples] = heights
+            self.angles_memory = torch.roll(self.angles_memory, n_samples)
+            self.angles_memory[:n_samples] = angles_gpu
+            self.heights_memory = torch.roll(self.heights_memory, n_samples)
+            self.heights_memory[:n_samples] = heights_gpu
     
     def generate(self):
-        angles = self.angles_memory[~np.isnan(self.angles_memory)]
-        heights = self.heights_memory[~np.isnan(self.heights_memory)]
-
-        permutation = np.argsort(angles)
-        angles = angles[permutation]
-        heights = heights[permutation]
-
-        # in rare cases, there are duplicate angles which causes make_smoothing_spline to fail
-        where_not_increasing = (angles[1:] == angles[:-1])
-        angles = np.delete(angles, np.where(where_not_increasing))
-        heights = np.delete(heights, np.where(where_not_increasing))
-
+        grid_angles = np.arange(360, dtype=np.float32)
         if self.radians:
-            grid = np.linspace(0, 2*np.pi, 360, endpoint=False)
+            grid_angles *= np.pi/180
+            epsilon = 4.5
         else:
-            grid = np.arange(0, 360, 1)
-        spline_func = Rbf(angles, heights, smooth=10)
-        return grid, spline_func(grid)
+            epsilon = 0.1
+        
+        angles = self.angles_memory[~torch.isnan(self.angles_memory)]
+        heights = self.heights_memory[~torch.isnan(self.heights_memory)]
+
+        outer_subtraction = angles.reshape(-1, 1)-angles.reshape(1, -1)
+        rbfs = torch.exp(-(epsilon*outer_subtraction)**2)
+        rbfs_pseudoinverse = torch.linalg.pinv(rbfs, rcond=1e-3)
+        weights = rbfs_pseudoinverse @ heights
+
+        angles = angles.cpu().numpy()
+        weights = weights.cpu().numpy()
+
+        interpolation = np.zeros_like(grid_angles, dtype=np.float32)
+        for angle, weight in zip(angles, weights):
+            rbf = np.exp(-(epsilon*(grid_angles-angle))**2)
+            interpolation += weight*rbf
+        
+        return grid_angles, interpolation
 
 
 class low_pass_filter:
