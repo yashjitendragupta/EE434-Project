@@ -118,19 +118,16 @@ class angular_velocity_estimator:
         dh_dt = (h-self.h_prev)/dt
         dh_dtheta = (np.roll(h, -1)-np.roll(h, 1))/(2*dtheta)
 
-        v_est = np.empty(360, dtype=np.float32)
-        for i in range(360):
-            window = np.arange(i-self.window_size, i+self.window_size+1)
-            window[window < 0] += 360
-            window[window >= 360] -= 360
-
-            dh_dtheta_local = dh_dtheta[window]
-            dh_dt_local = dh_dt[window]
-
-            # in 1D, the pseudoinverse reduces to a row vector
-            pseudoinverse = dh_dtheta_local.T/np.sum(dh_dtheta_local**2)
-
-            v_est[i] = -np.matmul(pseudoinverse, dh_dt_local)
+        dh_dtheta_neighbors = np.empty((360, 2*self.window_size+1), dtype=np.float32)
+        dh_dt_neighbors = np.empty((360, 2*self.window_size+1), dtype=np.float32)
+        for j in range(2*self.window_size+1):
+            shift = j-self.window_size
+            dh_dtheta_neighbors[:, j] = np.roll(dh_dtheta, shift)
+            dh_dt_neighbors[:, j] = np.roll(dh_dt, shift)
+        
+        # calculates all estimated velocities as many dot products
+        elementwise_product = np.multiply(dh_dtheta_neighbors, dh_dt_neighbors)
+        v_est = -np.sum(elementwise_product, axis=1)/np.sum(dh_dtheta_neighbors**2, axis=1)
         
         self.h_prev = h
         return v_est
