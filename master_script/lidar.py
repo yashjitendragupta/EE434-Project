@@ -12,7 +12,8 @@ from threading import Thread
 from time import time, sleep
 
 import motion
-
+oldindicator = np.zeros(36)
+locations = np.zeros(36)
 # Using the RPLidar class as a context manager ensures the serial comms are always closed, even on crashes
 class RpLidarContext(RPLidar):
 	def __enter__(self):
@@ -103,7 +104,17 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 
 		# report the velocity representation, dt, and queue size (queue size shouldn't keep growing!)
 		print(velocity_repr, 'dt: %.2f frame_rate: %01.1f qsize: %02d' % (dt, frame_rate, samples_queue.qsize()), end='\r')
-		
+		oldindicator = indicator
+		if(oldindicator != indicator):
+			for i in range(0,36):
+				if(indicator[i] > 0):
+					locations[i] = 1
+				if(locations[i-1] == 1)
+					locations[i] = 0
+				if(locations[i+1] == 1)
+					locations[i] = 0
+		print(locations)
+    		
 		# Write theta values to text file, this is defo not the right way but whatevs we'll fix it l8r
 		# thetas_txt.truncate(0)
 		# thetas_txt.write("-1 -1 -1")
