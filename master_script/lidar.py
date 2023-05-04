@@ -10,10 +10,12 @@ from rplidar import RPLidar
 from queue import Queue
 from threading import Thread
 from time import time, sleep
-
+import math as m
 import motion
-oldindicator = np.zeros(36)
-locations = np.zeros(36)
+sz=24
+locations = np.zeros(24)
+start_time = time()
+cnt = 0
 # Using the RPLidar class as a context manager ensures the serial comms are always closed, even on crashes
 class RpLidarContext(RPLidar):
 	def __enter__(self):
@@ -80,6 +82,7 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 
 	prev_ts = time()
 	while True:
+		current_time = time()-start_time
 		# collect dt as a difference between timestamps
 		current_ts = time()
 		dt = current_ts - prev_ts
@@ -103,18 +106,39 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 		velocity_repr[velocity_repr > 9] = 9
 
 		# report the velocity representation, dt, and queue size (queue size shouldn't keep growing!)
-		print(velocity_repr, 'dt: %.2f frame_rate: %01.1f qsize: %02d' % (dt, frame_rate, samples_queue.qsize()), end='\r')
-		oldindicator = indicator
-		if(oldindicator != indicator):
-			for i in range(0,36):
+		print(locations, 'dt: %.2f frame_rate: %01.1f qsize: %02d' % (dt, frame_rate, samples_queue.qsize()), end='\r')
+		if(current_time > 30):
+			for i in range(0,360):
+				k = m.floor(i * (sz/360))
 				if(indicator[i] > 0):
-					locations[i] = 1
-				if(locations[i-1] == 1)
-					locations[i] = 0
-				if(locations[i+1] == 1)
-					locations[i] = 0
-		print(locations, end = '\r')
-    		
+					if locations[k] == 0:
+						cnt = cnt + 1
+						locations[k] = cnt
+						for j in range(1,3):
+							if(k-j<0):
+								if(locations[(k-j)+sz] > 0):
+									locations[k] = locations[(k-j)+sz]
+									cnt = cnt-1
+									locations[(k-j+sz)] = 0
+									
+							else:
+								if(locations[k-j] > 0):
+									locations[k] = locations[k-j]
+									cnt = cnt-1
+									locations[k-j] = 0
+							if(k+j>sz-1):
+								if(locations[(k+j)-sz] > 0):
+									locations[k] = locations[(k+j)-sz]
+									cnt = cnt-1
+									locations[(k+j)-sz] = 0
+							else:
+								if(locations[k+j] > 0):
+									locations[k] = locations[k+j]
+									cnt = cnt-1
+									locations[k+j] = 0
+							
+			
+	    		
 		# Write theta values to text file, this is defo not the right way but whatevs we'll fix it l8r
 		# thetas_txt.truncate(0)
 		# thetas_txt.write("-1 -1 -1")
