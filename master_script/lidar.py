@@ -49,12 +49,11 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 			samples_queue.put(e)
 
 	frame_rate = 0
-	shared_heights = np.zeros(360, dtype=np.float32) # shared between interpolation_thread and main thread
-	ready_flag = False
+	heights_queue = Queue()
 
 	# since the interpolation routine primarily uses torch (which releases the GIL), we can use an asynchronous thread
 	def interpolation_routine():
-		global frame_rate, shared_heights, ready_flag, samples_queue
+		global frame_rate, samples_queue, heights_queue
 		
 		prev_ts = time()
 		while True:
@@ -68,9 +67,9 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 			distances = samples[:, 2]
 
 			interp.insert_many(angles, distances)
-			angle_grid, shared_heights = interp.generate()
+			angle_grid, heights = interp.generate()
 
-			ready_flag = True
+			heights_queue.put(heights)
 
 			current_ts = time()
 			frame_rate = 1/(current_ts-prev_ts)
@@ -91,11 +90,8 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 
 		# Do processing to find the three theta values
 
-		while not ready_flag:
-			sleep(0.010)
-		ready_flag = False
-		
-		filtered_heights = filt.filter(shared_heights)
+		heights = heights_queue.get(timeout=9)
+		filtered_heights = filt.filter(heights)
 		velocities = vel_est.estimate(filtered_heights, dt)
 		labels = motion.detect_motion(velocities)
 		indicator = motion.find_motion(labels)
