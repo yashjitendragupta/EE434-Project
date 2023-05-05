@@ -116,7 +116,7 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 				if(indicator[i] > 0):
 					if cnt == 3:
 						if locations[k] == 0:
-							for j in range(1,19):
+							for j in range(1,6): # TODO: previously 19, but what really works here?
 								if(k-j<0):
 									if(locations[(k-j)+sz] > 0):
 										locations[k] = locations[(k-j)+sz]
