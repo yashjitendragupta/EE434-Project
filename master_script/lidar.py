@@ -34,17 +34,11 @@ vel_est = motion.angular_velocity_estimator(window_size=16)
 with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 	samples_queue = Queue()
 	
-	# the queuing rplidar uses seems flaky, so we'll run our own queue and monitior the queue's size
 	def lidar_routine():
 		global samples_queue
-
 		try:
-			samples_batch = []
-			for samples in lidar.iter_scans(max_buf_meas=512):
-				samples_batch.extend(samples)
-				if len(samples_batch) >= 128:
-					samples_queue.put(samples_batch) # pass samples into samples_queue
-					samples_batch = []
+			for samples in lidar.iter_scans(): # this always yield about 200 samples
+				samples_queue.put(samples)
 		except Exception as e: # if an error is encountered, pass that error to the main thread
 			samples_queue.put(e)
 
