@@ -33,7 +33,7 @@ class RpLidarContext(PyRPlidar):
 
 # thetas_txt = open("thetas.txt","w")
 
-interp = motion.interpolator(memory_size=256, meters=True, radians=True)
+interp = motion.interpolator(memory_size=220, meters=True, radians=True)
 filt = motion.low_pass_filter(360, corner_freq=0.5, sampling_freq=8) # so far, the best sampling freq observed is about 8 Hz
 vel_est = motion.angular_velocity_estimator(window_size=16)
 
@@ -48,7 +48,7 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 			for sample in lidar.iter_scans(): # this always yield about 200 samples
 				if sample.quality != 0:
 					samples.append((sample.quality, sample.angle, sample.distance))
-				if len(samples) >= 512:
+				if len(samples) >= 440:
 					samples_queue.put(samples)
 					samples = []
 		except Exception as e: # if an error is encountered, pass that error to the main thread
