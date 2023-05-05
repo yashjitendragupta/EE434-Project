@@ -12,8 +12,9 @@ from threading import Thread
 from time import time, sleep
 import math as m
 import motion
-sz=24
-locations = np.zeros(24)
+sz=36
+locations = np.zeros(36)
+angles = np.zeros(4)
 start_time = time()
 cnt = 0
 # Using the RPLidar class as a context manager ensures the serial comms are always closed, even on crashes
@@ -106,38 +107,79 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 		velocity_repr[velocity_repr > 9] = 9
 
 		# report the velocity representation, dt, and queue size (queue size shouldn't keep growing!)
-		print(locations, 'dt: %.2f frame_rate: %01.1f qsize: %02d' % (dt, frame_rate, samples_queue.qsize()), end='\r')
+		#print(locations, 'dt: %.2f frame_rate: %01.1f qsize: %02d' % (dt, frame_rate, samples_queue.qsize()), end='\r')
 		if(current_time > 30):
 			for i in range(0,360):
 				k = m.floor(i * (sz/360))
 				if(indicator[i] > 0):
-					if locations[k] == 0:
-						cnt = cnt + 1
-						locations[k] = cnt
-						for j in range(1,3):
-							if(k-j<0):
-								if(locations[(k-j)+sz] > 0):
-									locations[k] = locations[(k-j)+sz]
-									cnt = cnt-1
-									locations[(k-j+sz)] = 0
-									
-							else:
-								if(locations[k-j] > 0):
-									locations[k] = locations[k-j]
-									cnt = cnt-1
-									locations[k-j] = 0
-							if(k+j>sz-1):
-								if(locations[(k+j)-sz] > 0):
-									locations[k] = locations[(k+j)-sz]
-									cnt = cnt-1
-									locations[(k+j)-sz] = 0
-							else:
-								if(locations[k+j] > 0):
-									locations[k] = locations[k+j]
-									cnt = cnt-1
-									locations[k+j] = 0
-							
-			
+					if cnt == 3:
+						if locations[k] == 0:
+							for j in range(1,19):
+								if(k-j<0):
+									if(locations[(k-j)+sz] > 0):
+										locations[k] = locations[(k-j)+sz]
+										
+										locations[(k-j+sz)] = 0
+										break
+										
+								else:
+									if(locations[k-j] > 0):
+										locations[k] = locations[k-j]
+										
+										locations[k-j] = 0
+										break
+								if(k+j>sz-1):
+									if(locations[(k+j)-sz] > 0):
+										locations[k] = locations[(k+j)-sz]
+										
+										locations[(k+j)-sz] = 0
+										break
+								else:
+									if(locations[k+j] > 0):
+										locations[k] = locations[k+j]
+										
+										locations[k+j] = 0
+										break
+						
+					else:
+
+						if locations[k] == 0:
+							cnt = cnt + 1
+							locations[k] = cnt
+							for j in range(1,3):
+								if(k-j<0):
+									if(locations[(k-j)+sz] > 0):
+										locations[k] = locations[(k-j)+sz]
+										cnt = cnt-1
+										locations[(k-j+sz)] = 0
+										break
+										
+								else:
+									if(locations[k-j] > 0):
+										locations[k] = locations[k-j]
+										cnt = cnt-1
+										locations[k-j] = 0
+										break
+								if(k+j>sz-1):
+									if(locations[(k+j)-sz] > 0):
+										locations[k] = locations[(k+j)-sz]
+										cnt = cnt-1
+										locations[(k+j)-sz] = 0
+										break
+								else:
+									if(locations[k+j] > 0):
+										locations[k] = locations[k+j]
+										cnt = cnt-1
+										locations[k+j] = 0
+										break
+
+						
+			for i in range(1,4):
+				if locations[i] > 0:
+					angles[int(locations[i])] = i*(360/sz)
+		print(angles[1],",",angles[2],",",angles[3])
+
+
 	    		
 		# Write theta values to text file, this is defo not the right way but whatevs we'll fix it l8r
 		# thetas_txt.truncate(0)

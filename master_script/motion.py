@@ -64,7 +64,7 @@ class interpolator:
 
         outer_subtraction = angles.reshape(-1, 1)-angles.reshape(1, -1)
         rbfs = torch.exp(-(epsilon*outer_subtraction)**2)
-        rbfs_pseudoinverse = torch.linalg.pinv(rbfs, rcond=1e-3)
+        rbfs_pseudoinverse = torch.linalg.pinv(rbfs, rcond=1e-3, hermitian= True)
         weights = rbfs_pseudoinverse @ heights
 
         angles = angles.cpu().numpy()
