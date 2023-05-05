@@ -6,7 +6,7 @@
 # writes between 0 to 360 for angle that does exist.
 
 import numpy as np
-from rplidar import RPLidar
+from pyrplidar import PyRPlidar
 from queue import Queue
 from threading import Thread
 from time import time, sleep
@@ -17,10 +17,16 @@ locations = np.zeros(36)
 angles = np.zeros(4)
 start_time = time()
 cnt = 0
+
 # Using the RPLidar class as a context manager ensures the serial comms are always closed, even on crashes
-class RpLidarContext(RPLidar):
+class RpLidarContext(PyRPlidar):
+	def __init__(self, *args, **kwargs):
+		self.connect(*args, **kwargs)
+		self.set_motor_pwm(1023)
 	def __enter__(self):
 		return self
+	def iter_scans(self):
+		return self.start_scan_express(1)()
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.stop()
 		self.disconnect()
@@ -37,8 +43,14 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 	def lidar_routine():
 		global samples_queue
 		try:
-			for samples in lidar.iter_scans(): # this always yield about 200 samples
-				samples_queue.put(samples)
+			samples = []
+			t = None
+			for sample in lidar.iter_scans(): # this always yield about 200 samples
+				if sample.quality != 0:
+					samples.append((sample.quality, sample.angle, sample.distance))
+				if len(samples) >= 512:
+					samples_queue.put(samples)
+					samples = []
 		except Exception as e: # if an error is encountered, pass that error to the main thread
 			samples_queue.put(e)
 
