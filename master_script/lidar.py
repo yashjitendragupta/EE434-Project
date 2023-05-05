@@ -175,10 +175,10 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 										locations[k+j] = 0
 										break
 
-						
-			for i in range(1,4):
-				if locations[i] > 0:
-					angles[int(locations[i])] = i*(360/sz)
+			for	i in range(sz):	
+				for j in range(1,4):
+					if(locations[i] == j):
+						angles[j] = i*(360/sz)
 		print(angles[1],",",angles[2],",",angles[3])
 
 
