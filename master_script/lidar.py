@@ -103,10 +103,10 @@ with RpLidarContext('/dev/ttyUSB0', baudrate=115200) as lidar:
 		indicator = motion.find_motion(labels)
 
 		# for testing and visualization, represent velocities as an integer between 0 and 9
-		maxpooled_velocity = np.max(np.abs(velocities).reshape(-1, 10), axis=1).reshape(-1)
-		velocity_repr = (10*maxpooled_velocity).astype(np.int64)
-		velocity_repr[velocity_repr < 0] = 0
-		velocity_repr[velocity_repr > 9] = 9
+		# maxpooled_velocity = np.max(np.abs(velocities).reshape(-1, 10), axis=1).reshape(-1)
+		# velocity_repr = (10*maxpooled_velocity).astype(np.int64)
+		# velocity_repr[velocity_repr < 0] = 0
+		# velocity_repr[velocity_repr > 9] = 9
 
 		# report the velocity representation, dt, and queue size (queue size shouldn't keep growing!)
 		#print(locations, 'dt: %.2f frame_rate: %01.1f qsize: %02d' % (dt, frame_rate, samples_queue.qsize()), end='\r')
